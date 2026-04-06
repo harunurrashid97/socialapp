@@ -1,202 +1,112 @@
-# SocialApp — Next.js Frontend
+# SocialApp — Frontend
 
-[![GitHub](https://img.shields.io/badge/GitHub-harunurrashid97%2Fsocialapp-blue?logo=github)](https://github.com/harunurrashid97/socialapp)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
-[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://reactjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
+Built with Next.js 14 and TypeScript. Connects to the Django REST backend via JWT auth.
 
-A social media feed frontend built with **Next.js 14 + React 18**. It connects to the [Django REST backend](../backend/README.md) over HTTP using JWT authentication.
-
-> **GitHub Repository:** https://github.com/harunurrashid97/socialapp
+**Repo:** https://github.com/harunurrashid97/socialapp
 
 ---
 
-## Tech Stack
+## Stack
 
-| Layer | Choice | Reason |
-|---|---|---|
-| Framework | Next.js 14 (App Router) | SSR / CSR support, file-based routing |
-| Language | TypeScript | Type safety, better DX |
-| Auth | JWT (cookies via `js-cookie`) | Stateless, auto-refresh via Axios interceptor |
-| HTTP Client | Axios | Interceptors for token injection and refresh |
-| Notifications | `react-hot-toast` | Lightweight, elegant toast messages |
-| Time Formatting | `timeago.js` | Human-readable relative timestamps |
-| Styling | Vanilla CSS + Bootstrap | Utility-based layout with full CSS control |
+- **Next.js 14** (App Router)
+- **TypeScript**
+- **Axios** — with interceptors for auto token refresh
+- **js-cookie** — stores JWT tokens in cookies
+- **react-hot-toast** — user feedback notifications
+- **timeago.js** — relative timestamps like "2 minutes ago"
+- **Bootstrap + Vanilla CSS** — layout and custom styles
 
 ---
 
-## Project Structure
+## Folder Structure
 
 ```
 frontend/
-├── public/
-│   └── assets/
-│       └── images/          # Static assets (logos, profile pictures, etc.)
+├── public/assets/images/      # logos, profile images etc.
 ├── src/
 │   ├── app/
-│   │   ├── feed/
-│   │   │   └── page.tsx     # Protected feed page (main timeline)
-│   │   ├── login/
-│   │   │   └── page.tsx     # Login page
-│   │   ├── register/
-│   │   │   └── page.tsx     # Registration page
-│   │   ├── globals.css      # Global styles
-│   │   └── layout.tsx       # Root layout (AuthProvider + Toaster)
+│   │   ├── feed/page.tsx      # main feed (protected)
+│   │   ├── login/page.tsx     # login page
+│   │   ├── register/page.tsx  # register page
+│   │   └── layout.tsx         # root layout with AuthProvider
 │   ├── components/
-│   │   ├── layout/
-│   │   │   ├── Navbar.tsx       # Top navigation with profile dropdown
-│   │   │   ├── LeftSidebar.tsx  # Left sidebar navigation
-│   │   │   └── RightSidebar.tsx # Right sidebar (suggestions, etc.)
-│   │   ├── posts/
-│   │   │   ├── PostCard.tsx     # Single post with likes, comments toggle
-│   │   │   ├── PostCreate.tsx   # Post creation form (text + image + visibility)
-│   │   │   ├── ReactionPicker.tsx # Emoji reaction picker (Like/Love/Haha/etc.)
-│   │   │   ├── LikersModal.tsx  # Modal listing users who liked a post/comment/reply
-│   │   │   └── Stories.tsx      # Stories bar component
-│   │   └── comments/
-│   │       └── CommentSection.tsx  # Comments, replies, and their like/unlike system
+│   │   ├── layout/            # Navbar, LeftSidebar, RightSidebar
+│   │   ├── posts/             # PostCard, PostCreate, ReactionPicker, LikersModal
+│   │   └── comments/          # CommentSection (comments + replies)
 │   ├── context/
-│   │   └── AuthContext.tsx   # Auth state, login, register, logout
+│   │   └── AuthContext.tsx    # login/logout/register state
 │   └── lib/
-│       └── api.ts            # Axios instance with JWT interceptors + all API calls
-├── .env.local                # Environment variables (not committed)
-├── next.config.js
-├── package.json
-└── tsconfig.json
+│       └── api.ts             # all API calls + Axios setup
+├── .env.local
+└── package.json
 ```
 
 ---
 
-## Features
-
-- **JWT Authentication** — Login, Register, auto token refresh, logout with cookie storage
-- **Protected Routes** — Feed is accessible only to authenticated users
-- **Post Feed** — Displays all public posts + author's own private posts, newest first
-- **Create Posts** — Text + optional image upload, with Public/Private visibility selector
-- **Reactions** — Like/Love/Haha/Wow/Sad/Angry with animated emoji reaction picker
-- **Comments** — Post comments with real-time optimistic UI updates
-- **Replies** — Reply to individual comments (1 level deep)
-- **Like/Unlike** — Like state displayed correctly for posts, comments, and replies
-- **Likers Modal** — See who liked a post, comment, or reply
-- **Infinite Scroll** — Cursor-based pagination for the feed with "Load More" button
-- **Toast Notifications** — Feedback for every user action (post, comment, error, etc.)
-
----
-
-## Quick Start
-
-### 1. Clone the repository
+## Getting Started
 
 ```bash
 git clone https://github.com/harunurrashid97/socialapp.git
 cd socialapp/frontend
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
 ```
 
-### 3. Configure environment
-
-Create a `.env.local` file in the `frontend/` directory:
-
-```env
+Create `.env.local`:
+```
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
 
-> Make sure the backend is running at this address before starting the frontend.
-
-### 4. Run the development server
-
+Run dev server:
 ```bash
 npm run dev
 ```
 
-Frontend runs at: **http://localhost:3000**
-
-### 5. Build for production
-
-```bash
-npm run build
-npm start
-```
+App runs at `http://localhost:3000`. Make sure the backend is running first.
 
 ---
 
-## Environment Variables
+## What's implemented
 
-| Variable | Description | Default |
+- Register with first name, last name, email, password
+- Login / logout with JWT (access + refresh tokens in cookies)
+- Auto token refresh on 401 — user stays logged in seamlessly
+- Feed page is protected — redirects to login if not authenticated
+- Create posts with text and optional image, choose public or private
+- Posts sorted newest first
+- Like / unlike posts with emoji reactions (like, love, haha, wow, sad, angry)
+- Comments and replies with their own like/unlike
+- Click likes count to see who liked it (modal)
+- Optimistic UI updates for likes
+
+---
+
+## Auth Flow (short version)
+
+1. User logs in → gets `access_token` + `refresh_token`
+2. Both stored in cookies
+3. Every Axios request attaches the access token as `Bearer`
+4. If a request gets `401`, Axios interceptor calls `/token/refresh/` automatically
+5. If refresh also fails → redirect to `/login`
+
+---
+
+## Pages
+
+| Route | Auth | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | URL of the Django backend API | `http://127.0.0.1:8000` |
+| `/login` | public | email + password |
+| `/register` | public | first name, last name, email, password |
+| `/feed` | protected | redirects to `/login` if not authenticated |
 
 ---
 
-## Authentication Flow
+## API modules (`src/lib/api.ts`)
 
-```
-User Registration / Login
-         │
-         ▼
-   POST /api/auth/register/ or /api/auth/login/
-         │
-         ▼
-   Store access_token + refresh_token in cookies (js-cookie)
-         │
-         ▼
-   AuthContext holds user state (first_name, last_name, email)
-         │
-         ▼
-   Axios interceptors attach Bearer token to every request
-         │
-         ▼
-   On 401 → auto-refresh token → retry original request
-         │
-         ▼
-   On refresh failure → redirect to /login
-```
+- `authApi` — register, login, logout, me, token refresh
+- `postsApi` — list, create, update, delete, detail
+- `commentsApi` — list, create, reply
+- `interactionsApi` — like/unlike for posts, comments, replies + likers list
 
 ---
 
-## Key Pages
-
-| Route | Access | Description |
-|---|---|---|
-| `/login` | Public | Login with email + password |
-| `/register` | Public | Sign up with first name, last name, email + password |
-| `/feed` | Protected | Main timeline (redirects to `/login` if not authenticated) |
-
----
-
-## API Integration
-
-All API calls are centralized in `src/lib/api.ts`:
-
-| Module | Endpoints |
-|---|---|
-| `authApi` | register, login, logout, me, token/refresh |
-| `postsApi` | list (feed), create, detail, update, delete |
-| `commentsApi` | list, create, delete, replies, createReply |
-| `interactionsApi` | likePost, postLikers, likeComment, commentLikers, likeReply, replyLikers |
-
----
-
-## Dependencies
-
-| Package | Version | Purpose |
-|---|---|---|
-| `next` | 14.x | Core framework |
-| `react` / `react-dom` | 18.x | UI library |
-| `axios` | 1.x | HTTP client |
-| `js-cookie` | 3.x | Cookie management for JWT tokens |
-| `react-hot-toast` | 2.x | Toast notifications |
-| `timeago.js` | 4.x | Human-readable timestamps |
-
----
-
-## Related
-
-- [Backend README](../backend/README.md) — Django REST API documentation
-- [Full Documentation](../DOCUMENTATION.md) — Architecture diagrams and design decisions
-- [GitHub Repository](https://github.com/harunurrashid97/socialapp)
+**Backend README:** [Backend Documentation](../backend/README.md)
