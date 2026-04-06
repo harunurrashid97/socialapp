@@ -14,6 +14,7 @@ interface Author { id: string; full_name: string; email: string }
 interface Post {
   id: string; content: string; image: string | null; visibility: string
   like_count: number; comment_count: number; is_liked: boolean
+  reaction_type: any | null
   created_at: string; author: Author
 }
 
