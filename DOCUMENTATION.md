@@ -42,11 +42,11 @@ We used a **JWT-based stateless architecture**.
 
 ## System Architecture
 
-![System Architecture](system_architecture_diagram.png)
+<img src="diagrams/system_architecture_diagram.png" alt="System Architecture" width="500"/>
 
 ## Database Design
 
-![Database ERD](database_diagram_social_app.png)
+<img src="diagrams/database_diagram_social_app.png" alt="Database ERD" width="500"/>
 
 ## Database Design Highlights
 - **UUIDs everywhere**: All entities (Users, Posts, Comments) use UUIDs instead of sequential integers to prevent "ID scraping" and improve security.

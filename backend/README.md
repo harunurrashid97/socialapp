@@ -73,15 +73,15 @@ socialapp/
 
 ## Backend Architecture
 
-![Backend Architecture](backend_architecture.png)
+<img src="diagrams/backend_architecture.png" alt="Backend Architecture" width="290"/>
 
 ### Auth Flow
 
-![Auth Flow](auth_flow.png)
+<img src="../diagrams/auth_flow.png" alt="Auth Flow" width="500"/>
 
 ### Like Counter Flow (race-condition safe)
 
-![Like Counter Flow](like_counter_flow.png)
+<img src="../diagrams/like_counter_flow.png" alt="Like Counter Flow" width="700"/>
 
 ### Key architectural decisions
 
