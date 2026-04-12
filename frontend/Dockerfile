@@ -1,16 +1,18 @@
-# Frontend Dockerfile for Railway
 FROM node:18-alpine AS builder
 
 ARG NEXT_PUBLIC_API_URL
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
+
 COPY . .
+
 RUN npm run build
 
 FROM node:18-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
