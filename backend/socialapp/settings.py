@@ -69,7 +69,6 @@ DATABASES = {
     "default": dj_database_url.config(
         default=f"postgresql://postgres:postgres@localhost:5432/socialapp_db",
         conn_max_age=60,
-        connect_timeout=10,
     )
 }
 
