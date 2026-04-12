@@ -1,9 +1,7 @@
 import os
+import dj_database_url
 from pathlib import Path
 from datetime import timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -68,18 +66,11 @@ TEMPLATES = [
 WSGI_APPLICATION = "socialapp.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME") or os.getenv("POSTGRES_DB") or "socialapp_db",
-        "USER": os.getenv("DB_USER") or os.getenv("POSTGRES_USER") or "postgres",
-        "PASSWORD": os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD") or "",
-        "HOST": os.getenv("DB_HOST") or os.getenv("POSTGRES_HOST") or "localhost",
-        "PORT": os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT") or "5432",
-        "CONN_MAX_AGE": 60,
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
-    }
+    "default": dj_database_url.config(
+        default=f"postgresql://postgres:postgres@localhost:5432/socialapp_db",
+        conn_max_age=60,
+        connect_timeout=10,
+    )
 }
 
 AUTH_USER_MODEL = "users.User"
