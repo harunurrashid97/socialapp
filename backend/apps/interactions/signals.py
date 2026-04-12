@@ -12,6 +12,17 @@ def increment_post_like_count(sender, instance, created, **kwargs):
     if created:
         from apps.posts.models import Post
         Post.objects.filter(pk=instance.post_id).update(like_count=F("like_count") + 1)
+        
+        # Create notification
+        post = Post.objects.filter(pk=instance.post_id).first()
+        if post and post.author_id != instance.user_id:
+            from apps.notifications.models import Notification
+            Notification.objects.create(
+                recipient=post.author,
+                actor=instance.user,
+                verb="reacted to your post",
+                post=post
+            )
 
 
 @receiver(post_delete, sender=PostLike)

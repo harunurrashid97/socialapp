@@ -163,10 +163,10 @@ export default function PostCard({ post, onDeleted, onUpdated }: Props) {
               <img src="/assets/images/profile-1.png" alt="Image" className="_post_img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div className="_feed_inner_timeline_post_box_txt">
-              <h4 className="_feed_inner_timeline_post_box_title" style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px', color: '#112032' }}>{post.author.full_name}</h4>
-              <p className="_feed_inner_timeline_post_box_para" style={{ fontSize: '13px', color: '#7a7a7a', margin: 0 }}>
+              <h4 className="_feed_inner_timeline_post_box_title" style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>{post.author.full_name}</h4>
+              <p className="_feed_inner_timeline_post_box_para" style={{ fontSize: '13px', margin: 0 }}>
                 {format(post.created_at)} ·{' '}
-                <a href="#0" style={{ color: '#7a7a7a' }}>{post.visibility === 'private' ? 'Private' : 'Public'}</a>
+                <a href="#0">{post.visibility === 'private' ? 'Private' : 'Public'}</a>
               </p>
             </div>
           </div>

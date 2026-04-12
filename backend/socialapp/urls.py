@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/posts/", include("apps.posts.urls")),
     path("api/comments/", include("apps.comments.urls")),
     path("api/interactions/", include("apps.interactions.urls")),
+    path("api/notifications/", include("apps.notifications.urls")),
 ]
 
 if settings.DEBUG:
