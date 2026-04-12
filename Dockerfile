@@ -18,7 +18,7 @@ RUN echo '#!/bin/bash' > /app/start.sh && \
     echo 'echo "=== DB ENV VARS ==="' >> /app/start.sh && \
     echo 'env | grep -E "(DATABASE|POSTGRES|PGHOST)" || echo "No DB vars found"' >> /app/start.sh && \
     echo 'python manage.py migrate --noinput' >> /app/start.sh && \
-    echo 'python -c "import django; django.setup(); from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='"'"'admin'"'"').exists() or User.objects.create_superuser('"'"'admin'"'"', '"'"'admin@example.com'"'"', '"'"'admin123'"'"')"' >> /app/start.sh && \
+    echo 'python manage.py shell -c "from apps.users.models import User; u, c = User.objects.get_or_create(email='"'"'admin@example.com'"'"', defaults={'"'"'first_name'"'"': '"'"'Admin'"'"', '"'"'last_name'"'"': '"'"'Admin'"'"'}); u.set_password('"'"'admin123'"'"'); u.is_staff=True; u.is_superuser=True; u.save()"' >> /app/start.sh && \
     echo 'exec gunicorn socialapp.wsgi --bind 0.0.0.0:$PORT' >> /app/start.sh
 
 RUN chmod +x /app/start.sh
