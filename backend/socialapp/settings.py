@@ -133,9 +133,17 @@ SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "apps.users.serializers.CustomTokenObtainPairSerializer",
 }
 
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
-).split(",")
+CORS_ALLOWED_ORIGINS = [
+    origin.rstrip("/") for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+    ).split(",")
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.rstrip("/") for origin in os.getenv(
+        "CSRF_TRUSTED_ORIGINS", ""
+    ).split(",") if origin
+]
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
