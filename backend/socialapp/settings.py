@@ -1,6 +1,32 @@
 import os
+from urllib.parse import urlparse
 from pathlib import Path
 from datetime import timedelta
+
+
+def parse_db_url():
+    database_url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+    if database_url:
+        parsed = urlparse(database_url)
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed.path[1:] if parsed.path else "railway",
+            "USER": parsed.username or "postgres",
+            "PASSWORD": parsed.password or "",
+            "HOST": parsed.hostname or "localhost",
+            "PORT": parsed.port or 5432,
+            "CONN_MAX_AGE": 60,
+        }
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME") or os.getenv("POSTGRES_DB") or "socialapp_db",
+        "USER": os.getenv("DB_USER") or os.getenv("POSTGRES_USER") or "postgres",
+        "PASSWORD": os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD") or "",
+        "HOST": os.getenv("DB_HOST") or os.getenv("PGHOST") or "localhost",
+        "PORT": os.getenv("DB_PORT") or os.getenv("PGPORT") or "5432",
+        "CONN_MAX_AGE": 60,
+    }
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -65,15 +91,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "socialapp.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME") or os.getenv("POSTGRES_DB") or os.getenv("DATABASE_NAME") or "socialapp_db",
-        "USER": os.getenv("DB_USER") or os.getenv("POSTGRES_USER") or os.getenv("DATABASE_USER") or "postgres",
-        "PASSWORD": os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD") or os.getenv("DATABASE_PASSWORD") or "",
-        "HOST": os.getenv("DB_HOST") or os.getenv("PGHOST") or os.getenv("DATABASE_HOST") or "localhost",
-        "PORT": os.getenv("DB_PORT") or os.getenv("PGPORT") or os.getenv("DATABASE_PORT") or "5432",
-        "CONN_MAX_AGE": 60,
-    }
+    "default": parse_db_url()
 }
 
 AUTH_USER_MODEL = "users.User"
