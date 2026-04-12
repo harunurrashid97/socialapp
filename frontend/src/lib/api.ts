@@ -85,3 +85,11 @@ export const interactionsApi = {
   likeReply: (replyId: string) => api.post(`/api/interactions/replies/${replyId}/like/`),
   replyLikers: (replyId: string) => api.get(`/api/interactions/replies/${replyId}/likers/`),
 }
+
+// ─── Notifications ──────────────────────
+export const notificationsApi = {
+  list: () => api.get('/api/notifications/'),
+  markRead: (id?: string) =>
+    id ? api.post(`/api/notifications/${id}/mark-read/`) : api.post('/api/notifications/mark-read/'),
+}
+
