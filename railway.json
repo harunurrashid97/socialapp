@@ -1,0 +1,25 @@
+{
+  "$schema": "https://railway.com/railway.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd backend && pip install -r requirements.txt",
+    "startCommand": "cd backend && gunicorn socialapp.wsgi --bind 0.0.0.0:$PORT"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyLimit": 5
+  },
+  "services": {
+    "backend": {
+      "build": {
+        "builder": "NIXPACKS",
+        "buildCommand": "pip install -r requirements.txt",
+        "startCommand": "gunicorn socialapp.wsgi --bind 0.0.0.0:$PORT"
+      },
+      "run": {
+        "runtime": "python"
+      }
+    }
+  }
+}

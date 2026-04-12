@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
-      // Local development
       {
         protocol: 'http',
         hostname: '127.0.0.1',
@@ -15,10 +15,14 @@ const nextConfig = {
         port: '8000',
         pathname: '/media/**',
       },
-      // Render.com production backend
       {
         protocol: 'https',
         hostname: '*.onrender.com',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.up.railway.app',
         pathname: '/media/**',
       },
     ],
