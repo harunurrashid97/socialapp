@@ -1,5 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed as DRFAuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User
@@ -22,6 +24,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ("first_name", "last_name", "email", "password", "password_confirm")
 
+    def validate_first_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("First name is required.")
+        return value.strip()
+
+    def validate_last_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Last name is required.")
+        return value.strip()
+
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password": "Passwords do not match."})
@@ -29,7 +41,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop("password_confirm")
-        return User.objects.create_user(**validated_data)
+        try:
+            return User.objects.create_user(**validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Unable to complete registration. Please try again."]}
+            )
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -45,7 +62,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Extend JWT payload with basic user info to reduce round-trips."""
 
     def validate(self, attrs):
-        data = super().validate(attrs)
+        try:
+            data = super().validate(attrs)
+        except DRFAuthenticationFailed:
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Invalid email or password."]}
+            )
         data["user"] = {
             "id": str(self.user.id),
             "email": self.user.email,

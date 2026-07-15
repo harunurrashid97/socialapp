@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-socialapp_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: thisisharun.xyz,backend,localhost,127.0.0.1
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: ${POSTGRES_DB:-socialapp_db}
+      DATABASE_USER: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      ACCESS_TOKEN_LIFETIME_MINUTES: "60"
+      REFRESH_TOKEN_LIFETIME_DAYS: "7"
+      CORS_ALLOWED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz
+      CSRF_TRUSTED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz
+      THROTTLE_ANON_RATE: 100/min
+      THROTTLE_USER_RATE: 300/min
+      THROTTLE_LOGIN_RATE: 5/min
+      THROTTLE_REGISTER_RATE: 3/hour
+      THROTTLE_POST_CREATE_RATE: 20/min
+      THROTTLE_POST_MUTATE_RATE: 30/min
+      THROTTLE_COMMENT_CREATE_RATE: 30/min
+      THROTTLE_COMMENT_MUTATE_RATE: 30/min
+      THROTTLE_REPLY_CREATE_RATE: 30/min
+      THROTTLE_REPLY_MUTATE_RATE: 30/min
+      THROTTLE_LIKE_RATE: 60/min
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media_volume:/app/media
+    restart: always
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn socialapp.wsgi --bind 0.0.0.0:8000 --workers 3"
+
+volumes:
+  postgres_data:
+  media_volume:

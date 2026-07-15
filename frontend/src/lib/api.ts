@@ -68,10 +68,12 @@ export const postsApi = {
 
 // ─── Comments ───────────────────────────
 export const commentsApi = {
-  list: (postId: string) => api.get(`/api/comments/posts/${postId}/`),
+  list: (postId: string, cursor?: string) => 
+    api.get(`/api/comments/posts/${postId}/`, { params: cursor ? { cursor } : {} }),
   create: (postId: string, content: string) => api.post(`/api/comments/posts/${postId}/`, { content }),
   delete: (id: string) => api.delete(`/api/comments/${id}/`),
-  replies: (commentId: string) => api.get(`/api/comments/${commentId}/replies/`),
+  replies: (commentId: string, cursor?: string) => 
+    api.get(`/api/comments/${commentId}/replies/`, { params: cursor ? { cursor } : {} }),
   createReply: (commentId: string, content: string) =>
     api.post(`/api/comments/${commentId}/replies/`, { content }),
 }

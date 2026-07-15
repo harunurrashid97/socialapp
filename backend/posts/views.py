@@ -3,12 +3,27 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef, Subquery
 
 from .models import Post
 from .serializers import PostSerializer, PostCreateSerializer
 from .pagination import PostCursorPagination
+from .permissions import check_post_visible
+from interactions.models import PostLike
+
+
+def _with_like_annotations(queryset, user):
+    """
+    Annotate each post with the requesting user's like state in a single
+    query instead of letting the serializer issue one query per post.
+    """
+    like_qs = PostLike.objects.filter(post=OuterRef("pk"), user=user)
+    return queryset.annotate(
+        is_liked_annotated=Exists(like_qs),
+        reaction_type_annotated=Subquery(like_qs.values("reaction_type")[:1]),
+    )
 
 
 class PostListCreateView(APIView):
@@ -18,6 +33,14 @@ class PostListCreateView(APIView):
     """
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    throttle_scope = "post-create"
+
+    def get_throttles(self):
+        # Only apply the tighter "post-create" scope to POST; GET (the feed)
+        # keeps the default anon/user rate set globally in settings.
+        if self.request.method == "POST":
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request):
         # Show public posts OR own private posts
@@ -28,6 +51,7 @@ class PostListCreateView(APIView):
             )
             .order_by("-created_at")
         )
+        queryset = _with_like_annotations(queryset, request.user)
         paginator = PostCursorPagination()
         page = paginator.paginate_queryset(queryset, request)
         serializer = PostSerializer(page, many=True, context={"request": request})
@@ -52,17 +76,24 @@ class PostDetailView(APIView):
     """
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "post-mutate"
+
+    def get_throttles(self):
+        if self.request.method in ("PUT", "DELETE"):
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def _get_visible_post(self, pk, user):
         """Return post if visible to the requesting user, else 404."""
         post = get_object_or_404(Post, pk=pk)
-        if post.visibility == Post.Visibility.PRIVATE and post.author != user:
-            from rest_framework.exceptions import NotFound
-            raise NotFound("Post not found.")
+        check_post_visible(post, user)
         return post
 
     def get(self, request, pk):
-        post = self._get_visible_post(pk, request.user)
+        queryset = _with_like_annotations(Post.objects.select_related("author"), request.user)
+        post = get_object_or_404(queryset, pk=pk)
+        check_post_visible(post, request.user)
         serializer = PostSerializer(post, context={"request": request})
         return Response(serializer.data)
 
@@ -92,6 +123,7 @@ class MyPostsView(APIView):
             .filter(author=request.user)
             .order_by("-created_at")
         )
+        queryset = _with_like_annotations(queryset, request.user)
         paginator = PostCursorPagination()
         page = paginator.paginate_queryset(queryset, request)
         serializer = PostSerializer(page, many=True, context={"request": request})

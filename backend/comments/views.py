@@ -2,11 +2,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Exists, OuterRef, Prefetch
 
-from apps.posts.models import Post
+from posts.models import Post
+from posts.permissions import get_accessible_post, check_post_visible
+from posts.pagination import CommentCursorPagination, ReplyCursorPagination
+from interactions.models import CommentLike, ReplyLike
 from .models import Comment, Reply
 from .serializers import (
     CommentSerializer,
@@ -14,7 +18,16 @@ from .serializers import (
     ReplySerializer,
     ReplyCreateSerializer,
 )
-from apps.posts.pagination import CommentCursorPagination
+
+
+def _reply_queryset_for(user):
+    """Replies annotated with this user's like state, ready to prefetch."""
+    like_qs = ReplyLike.objects.filter(reply=OuterRef("pk"), user=user)
+    return (
+        Reply.objects.select_related("author", "mention")
+        .annotate(is_liked_annotated=Exists(like_qs))
+        .order_by("created_at")
+    )
 
 
 class CommentListCreateView(APIView):
@@ -23,19 +36,24 @@ class CommentListCreateView(APIView):
     POST /api/comments/posts/<post_id>/   — Add a comment to a post.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comment-create"
 
-    def _get_accessible_post(self, post_id, user):
-        post = get_object_or_404(Post, pk=post_id)
-        if post.visibility == Post.Visibility.PRIVATE and post.author != user:
-            from rest_framework.exceptions import NotFound
-            raise NotFound("Post not found.")
-        return post
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request, post_id):
-        post = self._get_accessible_post(post_id, request.user)
+        post = get_accessible_post(post_id, request.user)
+
+        like_qs = CommentLike.objects.filter(comment=OuterRef("pk"), user=request.user)
         queryset = (
             Comment.objects.select_related("author")
-            .prefetch_related("replies__author", "replies__mention")
+            .annotate(is_liked_annotated=Exists(like_qs))
+            .prefetch_related(
+                Prefetch("replies", queryset=_reply_queryset_for(request.user))
+            )
             .filter(post=post)
             .order_by("created_at")
         )
@@ -45,7 +63,7 @@ class CommentListCreateView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, post_id):
-        post = self._get_accessible_post(post_id, request.user)
+        post = get_accessible_post(post_id, request.user)
         serializer = CommentCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -67,6 +85,13 @@ class CommentDetailView(APIView):
     DELETE /api/comments/<id>/   — Delete a comment (author only).
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "comment-mutate"
+
+    def get_throttles(self):
+        if self.request.method in ("PUT", "DELETE"):
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def put(self, request, pk):
         comment = get_object_or_404(Comment, pk=pk, author=request.user)
@@ -87,23 +112,37 @@ class CommentDetailView(APIView):
 
 class ReplyListCreateView(APIView):
     """
-    GET  /api/comments/<comment_id>/replies/   — List replies.
+    GET  /api/comments/<comment_id>/replies/   — List replies (paginated).
     POST /api/comments/<comment_id>/replies/   — Add a reply.
+
+    Both actions verify the parent post is visible to the requesting user —
+    a comment/reply id alone isn't proof of access, since ids can be
+    guessed or shared, and the post they belong to may be private.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "reply-create"
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
+    def _get_accessible_comment(self, comment_id, user):
+        comment = get_object_or_404(Comment.objects.select_related("post"), pk=comment_id)
+        check_post_visible(comment.post, user)
+        return comment
 
     def get(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id)
-        replies = (
-            Reply.objects.select_related("author", "mention")
-            .filter(comment=comment)
-            .order_by("created_at")
-        )
-        serializer = ReplySerializer(replies, many=True, context={"request": request})
-        return Response(serializer.data)
+        comment = self._get_accessible_comment(comment_id, request.user)
+        replies = _reply_queryset_for(request.user).filter(comment=comment)
+        paginator = ReplyCursorPagination()
+        page = paginator.paginate_queryset(replies, request)
+        serializer = ReplySerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id)
+        comment = self._get_accessible_comment(comment_id, request.user)
         serializer = ReplyCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -132,6 +171,13 @@ class ReplyDetailView(APIView):
     DELETE /api/comments/replies/<id>/   — Delete a reply (author only).
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "reply-mutate"
+
+    def get_throttles(self):
+        if self.request.method in ("PUT", "DELETE"):
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def put(self, request, pk):
         reply = get_object_or_404(Reply, pk=pk, author=request.user)

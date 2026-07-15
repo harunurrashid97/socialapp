@@ -21,11 +21,21 @@ export default function RegisterPage() {
     e.preventDefault()
     setErrors({})
     const errs: Record<string, string> = {}
-    if (!form.first_name) errs.first_name = 'First name is required'
-    if (!form.last_name) errs.last_name = 'Last name is required'
-    if (!form.email) errs.email = 'Email is required'
-    if (!form.password) errs.password = 'Password is required'
-    if (form.password !== form.password_confirm) errs.password_confirm = 'Passwords do not match'
+    if (!form.first_name.trim()) errs.first_name = 'First name is required'
+    if (!form.last_name.trim()) errs.last_name = 'Last name is required'
+    if (!form.email) {
+      errs.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      errs.email = 'Please enter a valid email address'
+    }
+    if (!form.password) {
+      errs.password = 'Password is required'
+    } else if (form.password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long'
+    }
+    if (form.password !== form.password_confirm) {
+      errs.password_confirm = 'Passwords do not match'
+    }
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)

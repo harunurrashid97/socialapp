@@ -1,5 +1,5 @@
 import uuid
-import apps.posts.models
+import posts.models
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                     to=settings.AUTH_USER_MODEL,
                 )),
                 ("content", models.TextField(max_length=5000)),
-                ("image", models.ImageField(blank=True, null=True, upload_to=apps.posts.models.post_image_upload_path)),
+                ("image", models.ImageField(blank=True, null=True, upload_to=posts.models.post_image_upload_path)),
                 ("visibility", models.CharField(
                     choices=[("public", "Public"), ("private", "Private")],
                     db_index=True,

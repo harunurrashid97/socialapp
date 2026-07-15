@@ -17,8 +17,16 @@ export default function LoginPage() {
     e.preventDefault()
     setErrors({})
     const errs: typeof errors = {}
-    if (!email) errs.email = 'Email is required'
-    if (!password) errs.password = 'Password is required'
+    if (!email) {
+      errs.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errs.email = 'Please enter a valid email address'
+    }
+    if (!password) {
+      errs.password = 'Password is required'
+    } else if (password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long'
+    }
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)
@@ -27,7 +35,7 @@ export default function LoginPage() {
       toast.success('Welcome back!')
       router.push('/feed')
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || 'Invalid credentials'
+      const detail = err?.response?.data?.non_field_errors?.[0] || err?.response?.data?.detail || 'Invalid credentials'
       setErrors({ general: detail })
     } finally {
       setLoading(false)

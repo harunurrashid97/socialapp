@@ -2,10 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 
-from apps.posts.models import Post
-from apps.comments.models import Comment, Reply
+from posts.models import Post
+from posts.permissions import check_post_visible
+from comments.models import Comment, Reply
 from .models import PostLike, CommentLike, ReplyLike
 from .serializers import LikerSerializer
 
@@ -16,6 +18,8 @@ class PostLikeToggleView(APIView):
     Toggles like on a post. Returns new like state and count.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "like-toggle"
 
     def post(self, request, post_id):
         post = get_object_or_404(Post, pk=post_id)
@@ -79,9 +83,13 @@ class CommentLikeToggleView(APIView):
     POST /api/interactions/comments/<comment_id>/like/
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "like-toggle"
 
     def post(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id)
+        comment = get_object_or_404(Comment.objects.select_related("post"), pk=comment_id)
+        check_post_visible(comment.post, request.user)
+
         like = CommentLike.objects.filter(comment=comment, user=request.user).first()
         if like:
             like.delete()
@@ -101,7 +109,9 @@ class CommentLikersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id)
+        comment = get_object_or_404(Comment.objects.select_related("post"), pk=comment_id)
+        check_post_visible(comment.post, request.user)
+
         likers = comment.likes.select_related("user").order_by("-created_at")
         users = [like.user for like in likers]
         serializer = LikerSerializer(users, many=True)
@@ -113,9 +123,13 @@ class ReplyLikeToggleView(APIView):
     POST /api/interactions/replies/<reply_id>/like/
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "like-toggle"
 
     def post(self, request, reply_id):
-        reply = get_object_or_404(Reply, pk=reply_id)
+        reply = get_object_or_404(Reply.objects.select_related("comment__post"), pk=reply_id)
+        check_post_visible(reply.comment.post, request.user)
+
         like = ReplyLike.objects.filter(reply=reply, user=request.user).first()
         if like:
             like.delete()
@@ -135,7 +149,9 @@ class ReplyLikersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, reply_id):
-        reply = get_object_or_404(Reply, pk=reply_id)
+        reply = get_object_or_404(Reply.objects.select_related("comment__post"), pk=reply_id)
+        check_post_visible(reply.comment.post, request.user)
+
         likers = reply.likes.select_related("user").order_by("-created_at")
         users = [like.user for like in likers]
         serializer = LikerSerializer(users, many=True)

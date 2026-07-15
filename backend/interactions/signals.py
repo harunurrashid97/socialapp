@@ -10,13 +10,17 @@ from .models import PostLike, CommentLike, ReplyLike
 @receiver(post_save, sender=PostLike)
 def increment_post_like_count(sender, instance, created, **kwargs):
     if created:
-        from apps.posts.models import Post
+        from posts.models import Post
         Post.objects.filter(pk=instance.post_id).update(like_count=F("like_count") + 1)
         
         # Create notification
         post = Post.objects.filter(pk=instance.post_id).first()
         if post and post.author_id != instance.user_id:
+<<<<<<< HEAD:backend/apps/interactions/signals.py
             from apps.notifications.models import Notification
+=======
+            from notifications.models import Notification
+>>>>>>> 132dddc (fix:backend_frontend_issue):backend/interactions/signals.py
             Notification.objects.create(
                 recipient=post.author,
                 actor=instance.user,
@@ -27,7 +31,7 @@ def increment_post_like_count(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=PostLike)
 def decrement_post_like_count(sender, instance, **kwargs):
-    from apps.posts.models import Post
+    from posts.models import Post
     Post.objects.filter(pk=instance.post_id).update(like_count=F("like_count") - 1)
 
 
@@ -36,13 +40,13 @@ def decrement_post_like_count(sender, instance, **kwargs):
 @receiver(post_save, sender=CommentLike)
 def increment_comment_like_count(sender, instance, created, **kwargs):
     if created:
-        from apps.comments.models import Comment
+        from comments.models import Comment
         Comment.objects.filter(pk=instance.comment_id).update(like_count=F("like_count") + 1)
 
 
 @receiver(post_delete, sender=CommentLike)
 def decrement_comment_like_count(sender, instance, **kwargs):
-    from apps.comments.models import Comment
+    from comments.models import Comment
     Comment.objects.filter(pk=instance.comment_id).update(like_count=F("like_count") - 1)
 
 
@@ -51,11 +55,11 @@ def decrement_comment_like_count(sender, instance, **kwargs):
 @receiver(post_save, sender=ReplyLike)
 def increment_reply_like_count(sender, instance, created, **kwargs):
     if created:
-        from apps.comments.models import Reply
+        from comments.models import Reply
         Reply.objects.filter(pk=instance.reply_id).update(like_count=F("like_count") + 1)
 
 
 @receiver(post_delete, sender=ReplyLike)
 def decrement_reply_like_count(sender, instance, **kwargs):
-    from apps.comments.models import Reply
+    from comments.models import Reply
     Reply.objects.filter(pk=instance.reply_id).update(like_count=F("like_count") - 1)

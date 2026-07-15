@@ -21,11 +21,11 @@ REST API built with Django REST Framework and PostgreSQL.
 ```
 backend/
 ├── socialapp/           # Django project config (settings, urls, wsgi)
-├── apps/
-│   ├── users/           # register, login, logout, me endpoints
-│   ├── posts/           # post CRUD + feed
-│   ├── comments/        # comments + replies
-│   └── interactions/    # likes for posts, comments, replies
+├── users/              # register, login, logout, me endpoints
+├── posts/              # post CRUD + feed + pagination
+├── comments/           # comments + replies + pagination
+├── interactions/       # likes for posts, comments, replies + signals
+├── notifications/      # notification model + list/mark-read
 ├── manage.py
 ├── requirements.txt
 └── .env
@@ -61,7 +61,19 @@ backend/
 
 **One-level replies only** — kept replies at one level deep (comments → replies) to avoid recursive DB queries and keep the UI simple.
 
-**No N+1 queries** — all list views use `select_related` / `prefetch_related`. Comment list also prefetches replies and their authors in one query.
+**No N+1 queries** — all list views use `select_related` / `prefetch_related`. Comment list also prefetches replies and their authors in one query. Like state is annotated with `Exists` / `Subquery` so the serializer never falls back to per-object queries.
+
+**Generic error messages** — login returns "Invalid email or password" regardless of whether the email exists. Registration catches `IntegrityError` and returns a generic message instead of leaking database constraint details.
+
+**Scoped rate limiting** — mutating endpoints use tighter throttle scopes than read endpoints:
+- Login: 5/min
+- Registration: 3/hour
+- Post create: 20/min, post update/delete: 30/min
+- Comment create: 30/min, comment update/delete: 30/min
+- Reply create: 30/min, reply update/delete: 30/min
+- Like toggles: 60/min
+
+**Input validation** — serializers enforce content length, image type/size, and name sanitization. Frontend validation mirrors these rules for immediate feedback.
 
 ---
 
@@ -90,17 +102,7 @@ ALTER USER postgres WITH PASSWORD 'yourpassword';
 
 ### 3. Configure .env
 
-```env
-SECRET_KEY=<generate one>
-DEBUG=True
-DB_NAME=socialapp_db
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_HOST=localhost
-DB_PORT=5432
-ACCESS_TOKEN_LIFETIME_MINUTES=60
-REFRESH_TOKEN_LIFETIME_DAYS=7
-```
+Copy `.env.example` to `.env` and fill in values. At minimum, set a strong `SECRET_KEY` and correct database credentials.
 
 Generate a secret key:
 ```bash
@@ -117,6 +119,53 @@ python3 manage.py runserver
 
 API runs at `http://127.0.0.1:8000`  
 Admin panel at `http://127.0.0.1:8000/admin/`
+
+---
+
+## Production Deployment
+
+### Environment Variables
+
+Set these in your hosting platform (Railway, Render, etc.):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SECRET_KEY` | Yes | Django secret key (keep this safe) |
+| `DEBUG` | Yes | Must be `False` in production |
+| `ALLOWED_HOSTS` | Yes | Comma-separated list of allowed domains |
+| `DATABASE_URL` | Yes* | Full PostgreSQL connection string |
+| `CORS_ALLOWED_ORIGINS` | Yes | Comma-separated frontend origins |
+| `ACCESS_TOKEN_LIFETIME_MINUTES` | No | Default `60` |
+| `REFRESH_TOKEN_LIFETIME_DAYS` | No | Default `7` |
+
+*If `DATABASE_URL` is set, it takes precedence over individual `DATABASE_*` vars.
+
+### Railway
+
+1. Create a new Railway project and add a PostgreSQL plugin.
+2. Connect your GitHub repo.
+3. In the backend service settings, set the environment variables listed above.
+4. Railway auto-detects `railway.json` and deploys using the Dockerfile.
+
+### Docker (self-hosted)
+
+```bash
+# Build and run with docker-compose
+docker compose up --build
+
+# Or build manually
+docker build -t socialapp-backend .
+docker run -p 8000:8000 --env-file .env socialapp-backend
+```
+
+### Important Production Notes
+
+- **Never** commit `.env` to version control.
+- Set `DEBUG=False` in production.
+- Use a strong, randomly generated `SECRET_KEY`.
+- Ensure `ALLOWED_HOSTS` includes your actual domain.
+- `CORS_ALLOWED_ORIGINS` must point to your frontend domain(s) only.
+- The Docker entrypoint runs `migrate` and `collectstatic` automatically on startup.
 
 ---
 
@@ -157,14 +206,14 @@ Response (login/register):
 
 | Method | Endpoint | Notes |
 |--------|----------|-------|
-| GET | `/` | Feed — public posts + own private posts, newest first |
-| POST | `/` | Create post (use form-data if uploading image) |
-| GET | `/mine/` | My posts only |
+| GET | `/` | Feed — public posts + own private posts, newest first, cursor paginated (20/page) |
+| POST | `/` | Create post (form-data for image upload). Throttle: 20/min |
+| GET | `/mine/` | My posts only, cursor paginated (20/page) |
 | GET | `/<id>/` | Single post |
-| PUT | `/<id>/` | Edit (author only) |
-| DELETE | `/<id>/` | Delete (author only) |
+| PUT | `/<id>/` | Edit (author only). Throttle: 30/min |
+| DELETE | `/<id>/` | Delete (author only). Throttle: 30/min |
 
-Fields: `content` (required), `image` (optional file), `visibility` (`public` or `private`)
+Fields: `content` (required, max 5000 chars), `image` (optional file, max 5MB, images only), `visibility` (`public` or `private`)
 
 ---
 
@@ -172,12 +221,14 @@ Fields: `content` (required), `image` (optional file), `visibility` (`public` or
 
 | Method | Endpoint | Notes |
 |--------|----------|-------|
-| GET | `/posts/<post_id>/` | List comments |
-| POST | `/posts/<post_id>/` | Add comment |
-| PUT/DELETE | `/<id>/` | Edit/delete (author only) |
-| GET | `/<comment_id>/replies/` | List replies |
-| POST | `/<comment_id>/replies/` | Add reply |
-| PUT/DELETE | `/replies/<id>/` | Edit/delete (author only) |
+| GET | `/posts/<post_id>/` | List comments, cursor paginated (30/page) |
+| POST | `/posts/<post_id>/` | Add comment. Throttle: 30/min |
+| PUT/DELETE | `/<id>/` | Edit/delete (author only). Throttle: 30/min |
+| GET | `/<comment_id>/replies/` | List replies, cursor paginated (30/page) |
+| POST | `/<comment_id>/replies/` | Add reply. Throttle: 30/min |
+| PUT/DELETE | `/replies/<id>/` | Edit/delete (author only). Throttle: 30/min |
+
+Fields: `content` (required, max 2000 chars)
 
 ---
 
@@ -185,14 +236,37 @@ Fields: `content` (required), `image` (optional file), `visibility` (`public` or
 
 | Method | Endpoint | Notes |
 |--------|----------|-------|
-| POST | `/posts/<id>/like/` | Toggle like |
+| POST | `/posts/<id>/like/` | Toggle like with reaction type. Throttle: 60/min |
 | GET | `/posts/<id>/likers/` | Who liked it |
-| POST | `/comments/<id>/like/` | Toggle like |
+| POST | `/comments/<id>/like/` | Toggle like. Throttle: 60/min |
 | GET | `/comments/<id>/likers/` | Who liked it |
-| POST | `/replies/<id>/like/` | Toggle like |
+| POST | `/replies/<id>/like/` | Toggle like. Throttle: 60/min |
 | GET | `/replies/<id>/likers/` | Who liked it |
 
-Like toggle response: `{ "liked": true, "like_count": 5 }`
+Like toggle response: `{ "liked": true, "like_count": 5, "reaction_type": "like" }`
+
+---
+
+### Notifications — `/api/notifications/`
+
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| GET | `/` | List notifications for current user (max 50, newest first) |
+| POST | `/mark-read/` | Mark all notifications as read |
+| POST | `/<id>/mark-read/` | Mark single notification as read |
+
+---
+
+## Error Responses
+
+| Status | Meaning | Example |
+|--------|---------|---------|
+| `400` | Validation failed | `{ "content": ["Post content cannot be blank."] }` |
+| `401` | Missing or expired token | `{ "detail": "Given token not valid for any token type" }` |
+| `404` | Not found or private resource | `{ "detail": "Not found." }` |
+| `429` | Rate limit exceeded | `{ "detail": "Request was throttled." }` |
+
+**Security note:** Auth and visibility errors use generic messages. The API never reveals whether an email exists or whether a private post exists.
 
 ---
 
@@ -220,3 +294,4 @@ pm.environment.set("refresh_token", res.refresh);
 | `404` | Private post or wrong UUID |
 | `400` | Validation failed — check response body |
 | `415` | Sent JSON for image upload — use form-data |
+| `429` | Rate limit exceeded — slow down requests |

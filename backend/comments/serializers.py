@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Comment, Reply
-from apps.users.serializers import UserProfileSerializer
+from users.serializers import UserProfileSerializer
 
 
 class ReplySerializer(serializers.ModelSerializer):
@@ -26,6 +26,8 @@ class ReplySerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "comment", "author", "like_count", "created_at", "updated_at")
 
     def get_is_liked(self, obj):
+        if hasattr(obj, "is_liked_annotated"):
+            return bool(obj.is_liked_annotated)
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
@@ -48,7 +50,6 @@ class ReplyCreateSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     author = UserProfileSerializer(read_only=True)
     is_liked = serializers.SerializerMethodField()
-    replies = ReplySerializer(many=True, read_only=True)
 
     class Meta:
         model = Comment
@@ -60,7 +61,6 @@ class CommentSerializer(serializers.ModelSerializer):
             "like_count",
             "reply_count",
             "is_liked",
-            "replies",
             "created_at",
             "updated_at",
         )
@@ -69,6 +69,8 @@ class CommentSerializer(serializers.ModelSerializer):
         )
 
     def get_is_liked(self, obj):
+        if hasattr(obj, "is_liked_annotated"):
+            return bool(obj.is_liked_annotated)
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
@@ -83,4 +85,21 @@ class CommentCreateSerializer(serializers.ModelSerializer):
     def validate_content(self, value):
         if not value.strip():
             raise serializers.ValidationError("Comment content cannot be blank.")
+        if len(value) > 2000:
+            raise serializers.ValidationError("Comment must be under 2000 characters.")
+        return value
+
+
+class ReplyCreateSerializer(serializers.ModelSerializer):
+    mention_id = serializers.UUIDField(required=False, allow_null=True)
+
+    class Meta:
+        model = Reply
+        fields = ("content", "mention_id")
+
+    def validate_content(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Reply content cannot be blank.")
+        if len(value) > 2000:
+            raise serializers.ValidationError("Reply must be under 2000 characters.")
         return value

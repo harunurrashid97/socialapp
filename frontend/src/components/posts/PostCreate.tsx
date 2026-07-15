@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import { postsApi } from '@/lib/api'
 import toast from 'react-hot-toast'
 
-export default function PostCreate({ onPostCreated }: { onPostCreated: () => void }) {
+export default function PostCreate({ onPostCreated }: { onPostCreated: (post: any) => void }) {
   const [content, setContent] = useState('')
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -30,14 +30,24 @@ export default function PostCreate({ onPostCreated }: { onPostCreated: () => voi
       formData.append('visibility', visibility.toLowerCase())
       if (image) formData.append('image', image)
 
-      await postsApi.create(formData)
+      const { data } = await postsApi.create(formData)
       toast.success('Post created!')
       setContent('')
       setImage(null)
       setImagePreview(null)
-      onPostCreated()
-    } catch (err) {
-      toast.error('Failed to create post')
+      onPostCreated(data)
+    } catch (err: any) {
+      const errorData = err?.response?.data
+      let errorMsg = 'Failed to create post'
+      if (errorData) {
+        if (typeof errorData === 'string') errorMsg = errorData
+        else if (errorData.content) {
+          errorMsg = Array.isArray(errorData.content) ? errorData.content.join(' ') : errorData.content
+        } else if (errorData.detail) {
+          errorMsg = errorData.detail
+        }
+      }
+      toast.error(errorMsg)
     } finally {
       setLoading(false)
     }

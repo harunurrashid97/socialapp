@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Post
-from apps.users.serializers import UserProfileSerializer
+from users.serializers import UserProfileSerializer
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -31,12 +31,16 @@ class PostSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "author", "like_count", "comment_count", "created_at", "updated_at")
 
     def get_is_liked(self, obj):
+        if hasattr(obj, "is_liked_annotated"):
+            return bool(obj.is_liked_annotated)
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
         return False
 
     def get_reaction_type(self, obj):
+        if hasattr(obj, "reaction_type_annotated"):
+            return obj.reaction_type_annotated
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             like = obj.likes.filter(user=request.user).first()
@@ -54,6 +58,14 @@ class PostCreateSerializer(serializers.ModelSerializer):
     def validate_content(self, value):
         if not value.strip():
             raise serializers.ValidationError("Post content cannot be blank.")
+        return value
+
+    def validate_image(self, value):
+        if value:
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Image must be smaller than 5MB.")
+            if not value.content_type.startswith("image/"):
+                raise serializers.ValidationError("Only image files are allowed.")
         return value
 
 

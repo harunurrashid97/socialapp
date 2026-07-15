@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { postsApi, interactionsApi } from '@/lib/api'
 import CommentSection from '@/components/comments/CommentSection'
@@ -30,11 +30,18 @@ export default function PostCard({ post, onDeleted, onUpdated }: Props) {
   const [editVisibility, setEditVisibility] = useState(post.visibility)
   const [editLoading, setEditLoading] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const likersInFlight = useRef(false)
 
   const isOwner = user?.id === post.author.id
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
   const handleLike = async (reactType?: ReactionType) => {
+    // Guard against rapid double-clicks firing two toggle requests, which
+    // would flip the like state back and forth against the server.
+    if (likeLoading) return
+    setLikeLoading(true)
+
     // Optimistic Logic
     const oldPost = { ...post }
     let newIsLiked = !post.is_liked
@@ -60,14 +67,22 @@ export default function PostCard({ post, onDeleted, onUpdated }: Props) {
     } catch {
       toast.error('Failed to react')
       onUpdated(oldPost)
+    } finally {
+      setLikeLoading(false)
     }
   }
 
   const handleShowLikers = async () => {
+    if (likersInFlight.current) return
+    likersInFlight.current = true
     try {
       const { data } = await interactionsApi.postLikers(post.id)
       setLikers(data); setShowLikers(true)
-    } catch {}
+    } catch {
+      toast.error('Failed to load likes')
+    } finally {
+      likersInFlight.current = false
+    }
   }
 
   const handleDelete = async () => {
@@ -91,8 +106,19 @@ export default function PostCard({ post, onDeleted, onUpdated }: Props) {
       onUpdated(data)
       setEditing(false)
       toast.success('Post updated')
-    } catch { toast.error('Failed to update') }
-    finally { setEditLoading(false) }
+    } catch (err: any) {
+      const errorData = err?.response?.data
+      let errorMsg = 'Failed to update'
+      if (errorData) {
+        if (typeof errorData === 'string') errorMsg = errorData
+        else if (errorData.content) {
+          errorMsg = Array.isArray(errorData.content) ? errorData.content.join(' ') : errorData.content
+        } else if (errorData.detail) {
+          errorMsg = errorData.detail
+        }
+      }
+      toast.error(errorMsg)
+    } finally { setEditLoading(false) }
   }
 
   const getReactionIcon = (type: ReactionType | null, isLiked: boolean) => {
@@ -303,6 +329,7 @@ export default function PostCard({ post, onDeleted, onUpdated }: Props) {
           <button 
             className={`_feed_reaction${post.is_liked ? ' _feed_reaction_active' : ''}`}
             onClick={() => handleLike()}
+            disabled={likeLoading}
           >
             <span className="_feed_inner_timeline_reaction_link">
               <span>

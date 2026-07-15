@@ -25,6 +25,7 @@ export default function FeedPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login')
@@ -32,12 +33,13 @@ export default function FeedPage() {
 
   const fetchPosts = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const { data } = await postsApi.list()
       setPosts(data.results || data)
       setNextCursor(data.next ? new URL(data.next).searchParams.get('cursor') : null)
     } catch (err) {
-      console.error(err)
+      setError('Failed to load feed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -58,7 +60,9 @@ export default function FeedPage() {
     finally { setLoadingMore(false) }
   }
 
-  const handlePostCreated = () => fetchPosts()
+  const handlePostCreated = (newPost: Post) => {
+    setPosts(prev => [newPost, ...prev])
+  }
   const handlePostDeleted = (id: string) => setPosts(prev => prev.filter(p => p.id !== id))
   const handlePostUpdated = (updated: Post) => setPosts(prev => prev.map(p => p.id === updated.id ? updated : p))
 
@@ -91,9 +95,14 @@ export default function FeedPage() {
                        <PostCreate onPostCreated={handlePostCreated} />
 
                        {/* Posts list */}
-                       {loading ? (
-                         <div className="_loading">Loading posts...</div>
-                       ) : posts.length === 0 ? (
+                        {loading ? (
+                          <div className="_loading">Loading posts...</div>
+                        ) : error ? (
+                          <div className="_empty _feed_inner_area" style={{ padding: 40, textAlign: 'center' }}>
+                            <p style={{ fontSize: 15, color: '#ff4d4f' }}>{error}</p>
+                            <button onClick={fetchPosts} style={{ marginTop: 12, padding: '8px 20px', cursor: 'pointer' }}>Retry</button>
+                          </div>
+                        ) : posts.length === 0 ? (
                          <div className="_empty _feed_inner_area" style={{ padding: 40, textAlign: 'center' }}>
                            <p style={{ fontSize: 15 }}>No posts yet. Be the first to post!</p>
                          </div>

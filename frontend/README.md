@@ -65,6 +65,28 @@ App runs at `http://localhost:3000`. Make sure the backend is running first.
 
 ---
 
+## Production Build
+
+```bash
+npm run build
+npm start
+```
+
+### Deploy to Vercel
+
+1. Import the project in Vercel.
+2. Set `NEXT_PUBLIC_API_URL` to your backend production URL.
+3. Vercel auto-detects Next.js and deploys.
+
+### Deploy with Docker
+
+```bash
+docker build -t socialapp-frontend -f frontend/Dockerfile .
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://your-backend.example.com socialapp-frontend
+```
+
+---
+
 ## What's implemented
 
 - Register with first name, last name, email, password

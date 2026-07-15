@@ -18,3 +18,9 @@ class CommentCursorPagination(CursorPagination):
     page_size = 30
     ordering = "created_at"
     cursor_query_param = "cursor"
+
+
+class ReplyCursorPagination(CursorPagination):
+    page_size = 30
+    ordering = "created_at"
+    cursor_query_param = "cursor"

@@ -28,6 +28,31 @@ def parse_db_url():
     }
 
 
+
+def parse_db_url():
+    database_url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+    if database_url:
+        parsed = urlparse(database_url)
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed.path[1:] if parsed.path else "railway",
+            "USER": parsed.username or "postgres",
+            "PASSWORD": parsed.password or "",
+            "HOST": parsed.hostname or "localhost",
+            "PORT": parsed.port or 5432,
+            "CONN_MAX_AGE": 60,
+        }
+    return {
+        "ENGINE": os.getenv("DATABASE_ENGINE") or os.getenv("DB_ENGINE") or "django.db.backends.postgresql",
+        "NAME": os.getenv("DATABASE_NAME") or os.getenv("DB_NAME") or os.getenv("POSTGRES_DB") or "socialapp_db",
+        "USER": os.getenv("DATABASE_USER") or os.getenv("DB_USER") or os.getenv("POSTGRES_USER") or "postgres",
+        "PASSWORD": os.getenv("DATABASE_PASSWORD") or os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD") or "",
+        "HOST": os.getenv("DATABASE_HOST") or os.getenv("DB_HOST") or os.getenv("PGHOST") or "localhost",
+        "PORT": os.getenv("DATABASE_PORT") or os.getenv("DB_PORT") or os.getenv("PGPORT") or "5432",
+        "CONN_MAX_AGE": 60,
+    }
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
@@ -51,11 +76,11 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "apps.users",
-    "apps.posts",
-    "apps.comments",
-    "apps.interactions",
-    "apps.notifications",
+    "users",
+    "posts",
+    "comments",
+    "interactions",
+    "notifications",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -117,6 +142,23 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.CursorPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.getenv("THROTTLE_ANON_RATE", "100/min"),
+        "user": os.getenv("THROTTLE_USER_RATE", "300/min"),
+        "login": os.getenv("THROTTLE_LOGIN_RATE", "5/min"),
+        "register": os.getenv("THROTTLE_REGISTER_RATE", "3/hour"),
+        "post-create": os.getenv("THROTTLE_POST_CREATE_RATE", "20/min"),
+        "post-mutate": os.getenv("THROTTLE_POST_MUTATE_RATE", "30/min"),
+        "comment-create": os.getenv("THROTTLE_COMMENT_CREATE_RATE", "30/min"),
+        "comment-mutate": os.getenv("THROTTLE_COMMENT_MUTATE_RATE", "30/min"),
+        "reply-create": os.getenv("THROTTLE_REPLY_CREATE_RATE", "30/min"),
+        "reply-mutate": os.getenv("THROTTLE_REPLY_MUTATE_RATE", "30/min"),
+        "like-toggle": os.getenv("THROTTLE_LIKE_RATE", "60/min"),
+    },
 }
 
 SIMPLE_JWT = {
@@ -131,7 +173,7 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "TOKEN_OBTAIN_SERIALIZER": "apps.users.serializers.CustomTokenObtainPairSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "users.serializers.CustomTokenObtainPairSerializer",
 }
 
 CORS_ALLOWED_ORIGINS = [
