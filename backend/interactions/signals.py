@@ -16,11 +16,7 @@ def increment_post_like_count(sender, instance, created, **kwargs):
         # Create notification
         post = Post.objects.filter(pk=instance.post_id).first()
         if post and post.author_id != instance.user_id:
-<<<<<<< HEAD:backend/apps/interactions/signals.py
-            from apps.notifications.models import Notification
-=======
             from notifications.models import Notification
->>>>>>> 132dddc (fix:backend_frontend_issue):backend/interactions/signals.py
             Notification.objects.create(
                 recipient=post.author,
                 actor=instance.user,
