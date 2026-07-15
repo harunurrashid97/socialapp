@@ -61,7 +61,7 @@ if [ ! -d ".git" ]; then
 fi
 
 echo "[6/6] Configuring Nginx..."
-cp deploy/nginx-backend.conf /etc/nginx/sites-available/socialapp-backend
+cp nginx/backend.conf /etc/nginx/sites-available/socialapp-backend
 ln -sf /etc/nginx/sites-available/socialapp-backend /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
