@@ -36,8 +36,8 @@ services:
       DATABASE_PORT: "5432"
       ACCESS_TOKEN_LIFETIME_MINUTES: "60"
       REFRESH_TOKEN_LIFETIME_DAYS: "7"
-      CORS_ALLOWED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz
-      CSRF_TRUSTED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz
+      CORS_ALLOWED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz,https://newsocialapp.vercel.app
+      CSRF_TRUSTED_ORIGINS: https://thisisharun.xyz,https://www.thisisharun.xyz,https://newsocialapp.vercel.app
       THROTTLE_ANON_RATE: 100/min
       THROTTLE_USER_RATE: 300/min
       THROTTLE_LOGIN_RATE: 5/min
