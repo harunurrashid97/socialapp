@@ -36,7 +36,7 @@ cd $APP_DIR
 
 if [ ! -d ".git" ]; then
     echo "Please clone your repo into $APP_DIR before running this script."
-    echo "Example: git clone https://github.com/YOUR_USER/socialapp.git $APP_DIR"
+    echo "Example: git clone https://github.com/harunurrashid97/socialapp.git $APP_DIR"
     exit 1
 fi
 
