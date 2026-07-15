@@ -4,13 +4,14 @@ set -e
 echo "=== SocialApp Backend VPS Setup ==="
 
 if [ -z "$1" ]; then
-    echo "Usage: $0 <your-domain>"
-    echo "Example: $0 thisisharun.xyz"
+    echo "Usage: $0 <your-domain> [github-username]"
+    echo "Example: $0 thisisharun.xyz harunurrashid97"
     exit 1
 fi
 
 DOMAIN=$1
 APP_DIR="/opt/socialapp"
+GITHUB_USER="${2:-}"
 
 echo "[1/6] Updating system..."
 apt-get update && apt-get upgrade -y
@@ -35,9 +36,28 @@ mkdir -p $APP_DIR
 cd $APP_DIR
 
 if [ ! -d ".git" ]; then
-    echo "Please clone your repo into $APP_DIR before running this script."
-    echo "Example: git clone https://github.com/harunurrashid97/socialapp.git $APP_DIR"
-    exit 1
+    if [ -z "$GITHUB_USER" ]; then
+        echo "ERROR: /opt/socialapp is not a git repository"
+        echo ""
+        echo "Please clone your repo first:"
+        echo "  git clone https://github.com/YOUR_USERNAME/socialapp.git $APP_DIR"
+        echo ""
+        echo "Or run this script with your GitHub username:"
+        echo "  bash deploy/vps-setup.sh $DOMAIN YOUR_USERNAME"
+        exit 1
+    fi
+    
+    REPO_URL="https://github.com/${GITHUB_USER}/socialapp.git"
+    
+    if [ -d "$APP_DIR" ] && [ "$(ls -A $APP_DIR)" ]; then
+        echo "ERROR: $APP_DIR is not empty and not a git repo"
+        echo "Please remove it first: rm -rf $APP_DIR"
+        exit 1
+    fi
+    
+    echo "Cloning repository from $REPO_URL..."
+    git clone "$REPO_URL" "$APP_DIR"
+    cd "$APP_DIR"
 fi
 
 echo "[6/6] Configuring Nginx..."
