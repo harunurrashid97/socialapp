@@ -19,12 +19,12 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.onrender.com',
+        hostname: 'thisisharun.xyz',
         pathname: '/media/**',
       },
       {
         protocol: 'https',
-        hostname: '*.up.railway.app',
+        hostname: 'www.thisisharun.xyz',
         pathname: '/media/**',
       },
     ],
